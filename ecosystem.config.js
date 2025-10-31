@@ -1,7 +1,7 @@
 module.exports = {
   apps: [{
-    name: 'backend',
-    script: './dist/main.js',
+    name: 'modelweb-backend',
+    script: './dist/src/main.js',
     instances: 1,
     autorestart: true,
     watch: false,

@@ -69,8 +69,8 @@ fi
 
 # Stop existing backend process if running
 echo -e "${BLUE}🛑 Stopping existing backend process...${NC}"
-pm2 stop backend 2>/dev/null || true
-pm2 delete backend 2>/dev/null || true
+pm2 stop modelweb-backend 2>/dev/null || true
+pm2 delete modelweb-backend 2>/dev/null || true
 
 # Start the application with PM2
 echo -e "${BLUE}▶️  Starting backend server...${NC}"
@@ -86,8 +86,8 @@ pm2 status
 
 echo -e "${GREEN}🎉 Backend is now running!${NC}"
 echo -e "${BLUE}Useful commands:${NC}"
-echo -e "  - View logs: ${YELLOW}pm2 logs backend${NC}"
+echo -e "  - View logs: ${YELLOW}pm2 logs modelweb-backend${NC}"
 echo -e "  - Monitor: ${YELLOW}pm2 monit${NC}"
-echo -e "  - Restart: ${YELLOW}pm2 restart backend${NC}"
-echo -e "  - Stop: ${YELLOW}pm2 stop backend${NC}"
+echo -e "  - Restart: ${YELLOW}pm2 restart modelweb-backend${NC}"
+echo -e "  - Stop: ${YELLOW}pm2 stop modelweb-backend${NC}"
 

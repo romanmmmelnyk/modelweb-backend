@@ -56,13 +56,13 @@ npm run build
 
 # Restart PM2 process
 echo -e "${BLUE}🔄 Restarting server...${NC}"
-if pm2 list | grep -q "backend"; then
-    pm2 restart backend --update-env
+if pm2 list | grep -q "modelweb-backend"; then
+    pm2 restart modelweb-backend --update-env
 else
     pm2 start ecosystem.config.js --env production
     pm2 save
 fi
 
 echo -e "${GREEN}✓ Backend restarted successfully!${NC}"
-pm2 status backend
+pm2 status modelweb-backend
 

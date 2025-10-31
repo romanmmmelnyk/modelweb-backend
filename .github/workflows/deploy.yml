@@ -44,11 +44,11 @@ jobs:
             mkdir -p uploads/gallery uploads/templates logs
             
             echo "🔄 Restarting server..."
-            pm2 stop backend 2>/dev/null || true
-            pm2 delete backend 2>/dev/null || true
+            pm2 stop modelweb-backend 2>/dev/null || true
+            pm2 delete modelweb-backend 2>/dev/null || true
             pm2 start ecosystem.config.js --env production
             pm2 save
             
             echo "✅ Deployment complete!"
-            pm2 status backend
+            pm2 status modelweb-backend
 
