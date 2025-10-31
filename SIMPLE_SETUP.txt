@@ -1,0 +1,241 @@
+═══════════════════════════════════════════════════════════════
+  BACKEND SETUP GUIDE - SIMPLE & EASY
+═══════════════════════════════════════════════════════════════
+
+Repository: https://github.com/romanmmmelnyk/models-backend.git
+
+
+───────────────────────────────────────────────────────────────
+STEP 1: INITIAL SERVER SETUP
+───────────────────────────────────────────────────────────────
+
+1. SSH into your server:
+   ssh your-username@your-server-ip
+
+2. Go to where you want the project:
+   cd /your/desired/path
+   
+   Example paths:
+   - /var/www/backend
+   - /home/username/mwb
+   - /opt/backend
+
+3. Clone the repository:
+   git clone https://github.com/romanmmmelnyk/models-backend.git .
+   
+   OR if you want it in a folder:
+   git clone https://github.com/romanmmmelnyk/models-backend.git mwb
+   cd mwb/management-system/backend
+
+4. Install Node.js 20:
+   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+   sudo apt-get install -y nodejs
+   
+   Verify: node --version (should show v20.x.x)
+
+5. Install PM2:
+   sudo npm install -g pm2
+   
+6. Setup PM2 to auto-start on server reboot:
+   pm2 startup
+   
+   Copy and run the command it shows you
+
+
+───────────────────────────────────────────────────────────────
+STEP 2: CONFIGURE ENVIRONMENT
+───────────────────────────────────────────────────────────────
+
+1. Create .env file:
+   cd /your/path/management-system/backend
+   nano .env
+
+2. Paste this and fill in your PostgreSQL details:
+   DATABASE_URL="postgresql://USERNAME:PASSWORD@HOST:5432/DATABASE?schema=public"
+   PORT=8210
+   CORS_ORIGINS="http://localhost:5173,https://yourdomain.com"
+   
+   Example:
+   DATABASE_URL="postgresql://mwb_user:MyP@ss123@localhost:5432/mwb_db?schema=public"
+   PORT=8210
+   CORS_ORIGINS="http://localhost:5173,https://example.com"
+
+3. Save: Ctrl+X, then Y, then Enter
+
+4. Note your full path (you'll need it later):
+   pwd
+   
+   Write it down! Example: /var/www/mwb/management-system/backend
+
+
+───────────────────────────────────────────────────────────────
+STEP 3: FIRST DEPLOYMENT
+───────────────────────────────────────────────────────────────
+
+1. Make scripts executable:
+   chmod +x deploy.sh deploy-restart.sh
+
+2. Run first deployment:
+   npm run deploy
+   
+   This will take a few minutes. It will:
+   - Install all packages
+   - Setup Prisma
+   - Create database tables
+   - Build the app
+   - Start the server
+
+3. Check if it's running:
+   pm2 status
+   
+   You should see "backend" with status "online"
+
+4. View logs:
+   pm2 logs backend
+   
+   Press Ctrl+C to exit
+
+
+───────────────────────────────────────────────────────────────
+STEP 4: SETUP GITHUB ACTIONS (AUTO-DEPLOY)
+───────────────────────────────────────────────────────────────
+
+1. Generate SSH key for GitHub:
+   ssh-keygen -t ed25519 -C "github-deploy" -f ~/.ssh/github_deploy_key
+   
+   Press Enter twice (don't set a passphrase)
+
+2. Add public key to server:
+   cat ~/.ssh/github_deploy_key.pub >> ~/.ssh/authorized_keys
+
+3. Get private key (you'll add this to GitHub):
+   cat ~/.ssh/github_deploy_key
+   
+   Copy EVERYTHING including:
+   -----BEGIN OPENSSH PRIVATE KEY-----
+   (all the lines)
+   -----END OPENSSH PRIVATE KEY-----
+
+4. Add GitHub Secrets:
+   - Go to: https://github.com/romanmmmelnyk/models-backend/settings/secrets/actions
+   - Click "New repository secret" button
+   - Add these 6 secrets one by one:
+   
+   SECRET NAME: DEPLOY_HOST
+   VALUE: your-server-ip-or-domain.com
+   (Example: 192.168.1.100 or server.example.com)
+   
+   SECRET NAME: DEPLOY_USER  
+   VALUE: your-ssh-username
+   (Example: root or ubuntu or yourname)
+   
+   SECRET NAME: DEPLOY_SSH_KEY
+   VALUE: (paste the entire private key from step 3)
+   (Make sure to include BEGIN and END lines)
+   
+   SECRET NAME: DEPLOY_PORT
+   VALUE: 22
+   (Change if your SSH uses different port)
+   
+   SECRET NAME: DEPLOY_PATH
+   VALUE: /your/full/path/to/management-system/backend
+   (Example: /var/www/mwb/management-system/backend)
+   (Use the path you wrote down in Step 2)
+   
+   SECRET NAME: DATABASE_URL
+   VALUE: postgresql://USERNAME:PASSWORD@HOST:5432/DATABASE?schema=public
+   (Same as your .env file, exactly as you wrote it)
+
+
+───────────────────────────────────────────────────────────────
+STEP 5: TEST IT!
+───────────────────────────────────────────────────────────────
+
+1. Make a test change:
+   nano README.md
+   
+   Add a line like: "Test deployment"
+   
+   Save: Ctrl+X, Y, Enter
+
+2. Commit and push:
+   git add .
+   git commit -m "Test auto-deployment"
+   git push origin main
+
+3. Check GitHub Actions:
+   - Go to: https://github.com/romanmmmelnyk/models-backend/actions
+   - You should see a workflow running
+   - Wait for it to complete (green checkmark)
+
+4. Check your server:
+   pm2 logs backend
+   
+   You should see the server restart automatically!
+
+
+───────────────────────────────────────────────────────────────
+DONE! 🎉
+───────────────────────────────────────────────────────────────
+
+From now on, every time you push to main/master branch:
+✅ Code is automatically pulled
+✅ Dependencies are installed
+✅ Database migrations run
+✅ App is rebuilt
+✅ Server restarts
+
+All automatic! No more manual work.
+
+
+───────────────────────────────────────────────────────────────
+USEFUL COMMANDS
+───────────────────────────────────────────────────────────────
+
+View logs:
+   pm2 logs backend
+
+Restart manually:
+   pm2 restart backend
+
+Check status:
+   pm2 status
+
+Stop server:
+   pm2 stop backend
+
+Manual deployment after git pull:
+   npm run deploy:restart
+
+
+───────────────────────────────────────────────────────────────
+TROUBLESHOOTING
+───────────────────────────────────────────────────────────────
+
+Problem: Server won't start
+Solution:
+   pm2 logs backend --lines 50
+   Check .env file has correct DATABASE_URL
+   Test PostgreSQL: psql "YOUR_DATABASE_URL"
+
+Problem: GitHub Actions fails
+Solution:
+   - Check all 6 secrets are added correctly
+   - Verify DEPLOY_PATH matches actual path
+   - Check SSH key is complete (with BEGIN/END)
+   - Verify server is accessible via SSH
+
+Problem: Database connection fails
+Solution:
+   - Verify PostgreSQL is running: sudo systemctl status postgresql
+   - Check credentials in .env are correct
+   - Test: psql "YOUR_DATABASE_URL"
+   - Make sure password is URL-encoded if it has special chars
+
+Problem: Deploy script fails
+Solution:
+   npm run clean
+   npm run deploy
+
+═══════════════════════════════════════════════════════════════
+

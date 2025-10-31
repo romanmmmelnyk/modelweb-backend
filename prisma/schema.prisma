@@ -1,0 +1,331 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  users User[]
+  
+  @@map("tenants")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  password     String?  // Optional for OAuth users
+  provider     String   @default("email") // "email", "google", etc.
+  providerId   String?  // External provider ID
+  twoFactorSecret String? // TOTP secret for 2FA
+  twoFactorEnabled Boolean @default(false)
+  hasSeenOnboarding Boolean @default(false) // Track if user has seen dashboard onboarding
+  isAdmin      Boolean  @default(false) // Admin role for admin panel access
+  lastLogin    DateTime?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Relations
+  tenantId String
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  profile  Profile?
+  bookings Booking[]
+  sessions UserSession[]
+  media    Media[]
+  application Application?
+  billing  Billing?
+  notifications Notification[]
+  website Website?
+  
+  @@map("users")
+}
+
+model Profile {
+  id          String   @id @default(cuid())
+  firstName   String?
+  lastName    String?
+  avatar      String?
+  bio         String?  // About me section
+  dateOfBirth DateTime?
+  phone       String?
+  address     String?
+  city        String?
+  country     String?
+  cityVisible Boolean  @default(false) // Whether city should be visible on website
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  userId       String         @unique
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  socials      Social[]
+  measurements Measurement[]
+  
+  @@map("profiles")
+}
+
+model Media {
+  id           String   @id @default(cuid())
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  width        Int?     // Image width in pixels
+  height       Int?     // Image height in pixels
+  path         String   // File system path
+  url          String   // Public URL
+  alt          String?  // Alt text for accessibility
+  caption      String?  // Image caption
+  tags         String?  // Comma-separated tags
+  category     String?  // Gallery category (e.g., 'portfolio', 'events', 'products')
+  isPublic     Boolean  @default(true) // Whether image is public or private
+  latitude     Float?   // Location latitude
+  longitude    Float?   // Location longitude
+  locationName String?  // Location display name
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("media")
+}
+
+model Social {
+  id        String   @id @default(cuid())
+  platform  String   // 'instagram', 'facebook', 'whatsapp'
+  username  String
+  url       String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  profileId String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  
+  @@unique([profileId, platform])
+  @@map("socials")
+}
+
+model Measurement {
+  id        String   @id @default(cuid())
+  type      String   // 'bust', 'waist', 'hips', 'height', 'weight', etc.
+  value     Float
+  unit      String   // 'cm', 'inch', 'kg', 'lb', 'us', 'eu', etc.
+  notes     String?
+  recordedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  profileId String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  
+  @@map("measurements")
+}
+
+model Booking {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  price       Float?   // Booking price
+  location    String?
+  company     String?  // Company name if applicable
+  submitter   String?  // Person who submitted the booking
+  date        DateTime // Single date field
+  time        String?  // Optional time (e.g., "14:30")
+  status      String   @default("pending") // 'pending', 'confirmed', 'cancelled', 'completed'
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("bookings")
+}
+
+model Application {
+  id              String   @id @default(cuid())
+  email           String
+  firstName       String
+  lastName        String
+  about           String?
+  purposes        String   // JSON string array of purposes
+  customDesign    Boolean  @default(false)
+  paymentPlan     String   // 'monthly' or 'annual'
+  stripeSessionId String?  // Stripe checkout session ID
+  status          String   @default("pending") // 'pending', 'completed', 'failed', 'cancelled'
+  userId          String?  @unique // Created user ID after successful payment
+  processed       Boolean  @default(false) // Whether user account was created
+  processedAt     DateTime? // When the application was processed
+  tempPassword    String?  // Temporary password (hashed)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  user            User?    @relation(fields: [userId], references: [id])
+  billing         Billing?
+  
+  @@map("applications")
+}
+
+model Billing {
+  id                    String   @id @default(cuid())
+  stripeCustomerId      String   @unique // Stripe customer ID
+  stripeSubscriptionId  String?  @unique // Stripe subscription ID
+  billingType           String   // 'monthly' or 'annual'
+  billingDay            Int?     // Day of month for billing (1-31)
+  nextBillingDate       DateTime? // Next billing date
+  amount                Float    // Legacy: use initialAmount instead
+  initialAmount         Float?   // First payment amount (with setup fee + first period) in GBP
+  recurringAmount       Float?   // Recurring amount (monthly: £24.99, annual: £239.88)
+  setupFee              Float    @default(60.00) // Setup fee: £60
+  customDesignFee       Float?   // Custom design fee: £99 (optional)
+  currency              String   @default("gbp")
+  status                String   @default("active") // 'active', 'cancelled', 'past_due', 'expired'
+  cancelledAt           DateTime? // When subscription was cancelled
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  // Relations
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applicationId         String   @unique
+  application           Application @relation(fields: [applicationId], references: [id])
+  
+  @@map("billing")
+}
+
+model UserSession {
+  id             String   @id @default(cuid())
+  sessionToken   String   @unique // Secure random session token
+  refreshToken   String?  @unique // Optional refresh token for extended sessions
+  userAgent      String?  // Browser/app information
+  ipAddress      String?  // IP address for security
+  deviceInfo     String?  // Device type, OS, etc.
+  isActive       Boolean  @default(true)
+  expiresAt      DateTime // Session expiration (7 days default)
+  lastAccessed   DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("user_sessions")
+}
+
+model EmailVerification {
+  id         String   @id @default(cuid())
+  email      String   // Email address to verify
+  code       String   // 6-digit verification code
+  expiresAt  DateTime // Code expiration (15 minutes default)
+  verified   Boolean  @default(false)
+  attempts   Int      @default(0) // Track failed attempts
+  createdAt  DateTime @default(now())
+  
+  @@index([email])
+  @@map("email_verifications")
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  title       String
+  message     String
+  type        String   @default("info") // "info", "success", "warning", "error", "welcome"
+  read        Boolean  @default(false)
+  actionUrl   String?  // Optional link for clickable notifications
+  actionLabel String?  // Label for the action button
+  createdAt   DateTime @default(now())
+  readAt      DateTime?
+  
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, read])
+  @@map("notifications")
+}
+
+model Website {
+  id                  String   @id @default(cuid())
+  subdomain           String   @unique // e.g., "johndoe" for johndoe.modelsweb.co
+  fullDomain          String   @unique // e.g., "johndoe.modelsweb.co"
+  
+  // Configuration Options (Required)
+  accentColor         String   @default("#1E40AF") // Hex color code (required) - Dark blue
+  enableBooking       Boolean  // Enable booking system (required checkbox)
+  showGallery         Boolean  @default(false) // Show pictures from gallery (required checkbox)
+  showMeasurements    Boolean  @default(false) // Show measurements from profile
+  
+  // Template Selection (Required)
+  templateId          String?  // Selected template ID (required for submission)
+  selectedPictures    String?  // JSON array of selected picture IDs from gallery
+  
+  // Content Options (Can reflect from user profile)
+  reflectUserInfo     Boolean  @default(true) // Auto-sync with user profile
+  customName          String?  // Override name (if not reflecting)
+  customAbout         String?  // Override about (if not reflecting)
+  customPhone         String?  // Override phone (if not reflecting)
+  customEmail         String?  // Override email (if not reflecting)
+  
+  // Status & Metadata
+  status              String   @default("configured") // "configured" until template submitted; then "pending", "in_progress", "completed", "published"
+  configJson          String?  // JSON configuration for developer
+  requestedAt         DateTime @default(now())
+  completedAt         DateTime? // When website was completed
+  publishedAt         DateTime? // When website went live
+  notes               String?  // Internal notes for developers
+  templateSubmitted   Boolean  @default(false) // Whether user submitted the selected template for processing
+  templateSubmittedAt DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  // Relations
+  userId     String    @unique // One website per user
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template   WebsiteTemplate? @relation(fields: [templateId], references: [id])
+  
+  @@index([subdomain])
+  @@index([status])
+  @@index([templateId])
+  @@map("websites")
+}
+
+model WebsiteTemplate {
+  id                   String   @id @default(cuid())
+  name                 String   // Template name (e.g., "Modern Portfolio")
+  description          String?  // Brief description
+  pdfUrl               String?  // URL to the template PDF
+  isActive             Boolean  @default(true) // Whether template is available for selection
+  sortOrder            Int      @default(0) // Display order
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  
+  // Relations
+  websites Website[]
+  
+  @@index([isActive, sortOrder])
+  @@map("website_templates")
+}

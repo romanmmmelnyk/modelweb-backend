@@ -1,0 +1,22 @@
+node_modules
+# Keep environment variables out of version control
+.env
+
+/generated/prisma
+
+# Deployment artifacts
+deploy-package/
+logs/
+*.log
+
+# PM2
+.pm2/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Database
+prisma/dev.db
+prisma/*.db
+prisma/*.db-journal

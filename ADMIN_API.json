@@ -1,0 +1,531 @@
+{
+  "info": {
+    "baseUrl": "/api",
+    "title": "Admin API Documentation",
+    "version": "1.0.0",
+    "description": "Comprehensive admin panel API endpoints. All endpoints require admin authentication."
+  },
+  "authentication": {
+    "type": "Hardcoded Token",
+    "required": true,
+    "header": "X-Admin-Token: <ADMIN_TOKEN>",
+    "description": "All admin endpoints require the X-Admin-Token header with a token matching the ADMIN_TOKEN environment variable.",
+    "setup": "Set ADMIN_TOKEN in your .env file. Use a strong, random token for production."
+  },
+  "endpoints": {
+    "users": {
+      "list": {
+        "method": "GET",
+        "path": "/api/admin/users",
+        "queryParams": {
+          "page": {"type": "number", "default": 1, "description": "Page number"},
+          "limit": {"type": "number", "default": 20, "description": "Items per page"},
+          "search": {"type": "string", "description": "Search by email, first name, or last name"},
+          "isActive": {"type": "boolean", "description": "Filter by active status"},
+          "isAdmin": {"type": "boolean", "description": "Filter by admin status"}
+        },
+        "response": {
+          "data": "array of user objects with profile, billing, website, and counts",
+          "pagination": {"page": "number", "limit": "number", "total": "number", "totalPages": "number"}
+        }
+      },
+      "getById": {
+        "method": "GET",
+        "path": "/api/admin/users/:id",
+        "response": "Full user details with profile, billing, website, bookings, media, and counts"
+      },
+      "update": {
+        "method": "PUT",
+        "path": "/api/admin/users/:id",
+        "body": {
+          "email": {"type": "string", "required": false},
+          "isActive": {"type": "boolean", "required": false},
+          "isAdmin": {"type": "boolean", "required": false},
+          "password": {"type": "string", "required": false}
+        }
+      },
+      "delete": {
+        "method": "DELETE",
+        "path": "/api/admin/users/:id"
+      },
+      "bulkUpdate": {
+        "method": "POST",
+        "path": "/api/admin/users/bulk-update",
+        "body": {
+          "userIds": {"type": "array of strings", "required": true},
+          "isActive": {"type": "boolean", "required": false},
+          "isAdmin": {"type": "boolean", "required": false}
+        }
+      },
+      "bulkDelete": {
+        "method": "POST",
+        "path": "/api/admin/users/bulk-delete",
+        "body": {
+          "ids": {"type": "array of strings", "required": true}
+        }
+      }
+    },
+    "website": {
+      "save": {
+        "method": "POST",
+        "path": "/api/website",
+        "description": "Save or update website configuration. Sets status to 'configured' until submission.",
+        "body": {
+          "subdomain": {"type": "string", "required": true},
+          "accentColor": {"type": "string", "required": true},
+          "enableBooking": {"type": "boolean", "required": true},
+          "showGallery": {"type": "boolean", "required": true},
+          "reflectUserInfo": {"type": "boolean", "required": true},
+          "customName": {"type": "string", "required": false},
+          "customAbout": {"type": "string", "required": false},
+          "customPhone": {"type": "string", "required": false},
+          "customEmail": {"type": "string", "required": false},
+          "templateId": {"type": "string", "required": false},
+          "selectedPictures": {"type": "array of strings", "required": false}
+        },
+        "response": {
+          "status": "configured|pending|in_progress|completed|published",
+          "templateSubmitted": "boolean",
+          "templateSubmittedAt": "ISO date or null"
+        }
+      },
+      "submit": {
+        "method": "POST",
+        "path": "/api/website/submit",
+        "description": "Submit selected template and configuration for processing. Marks templateSubmitted=true and status='pending'.",
+        "response": {
+          "status": "pending",
+          "configJson": "string",
+          "config": "object",
+          "templateSubmitted": "true",
+          "templateSubmittedAt": "ISO date"
+        }
+      },
+      "withdraw": {
+        "method": "POST",
+        "path": "/api/website/withdraw",
+        "description": "Withdraw a previously submitted website request. Resets status to 'configured' and clears submission flags.",
+        "response": {
+          "status": "configured",
+          "templateSubmitted": "false",
+          "templateSubmittedAt": "null"
+        }
+      }
+    },
+    "websiteRequests": {
+      "list": {
+        "method": "GET",
+        "path": "/api/admin/website-requests",
+        "queryParams": {
+          "page": {"type": "number", "default": 1},
+          "limit": {"type": "number", "default": 20},
+          "status": {"type": "string", "values": ["configured", "pending", "in_progress", "completed", "published"]},
+          "search": {"type": "string", "description": "Search by subdomain, domain, user email, or name"}
+        },
+        "response": {
+          "data": "array of website objects with user and template",
+          "pagination": "standard pagination object"
+        }
+      },
+      "getById": {
+        "method": "GET",
+        "path": "/api/admin/website-requests/:id"
+      },
+      "updateStatus": {
+        "method": "PUT",
+        "path": "/api/admin/website-requests/:id/status",
+        "body": {
+          "status": {"type": "string", "values": ["pending", "in_progress", "completed", "published"], "required": true},
+          "notes": {"type": "string", "required": false}
+        }
+      }
+    },
+    "billing": {
+      "list": {
+        "method": "GET",
+        "path": "/api/admin/billings",
+        "queryParams": {
+          "page": {"type": "number", "default": 1},
+          "limit": {"type": "number", "default": 20},
+          "status": {"type": "string", "values": ["active", "cancelled", "past_due", "expired"]},
+          "search": {"type": "string", "description": "Search by customer ID, subscription ID, or user email"},
+          "fromDate": {"type": "string", "format": "ISO date"},
+          "toDate": {"type": "string", "format": "ISO date"}
+        }
+      },
+      "getById": {
+        "method": "GET",
+        "path": "/api/admin/billings/:id"
+      },
+      "updateStatus": {
+        "method": "PUT",
+        "path": "/api/admin/billings/:id/status",
+        "body": {
+          "status": {"type": "string", "values": ["active", "cancelled", "past_due", "expired"], "required": true}
+        }
+      }
+    },
+    "applications": {
+      "list": {
+        "method": "GET",
+        "path": "/api/admin/applications",
+        "queryParams": {
+          "page": {"type": "number", "default": 1},
+          "limit": {"type": "number", "default": 20},
+          "status": {"type": "string", "values": ["pending", "completed", "failed", "cancelled"]},
+          "processed": {"type": "boolean"},
+          "search": {"type": "string", "description": "Search by email, first name, or last name"}
+        }
+      },
+      "getById": {
+        "method": "GET",
+        "path": "/api/admin/applications/:id"
+      },
+      "updateStatus": {
+        "method": "PUT",
+        "path": "/api/admin/applications/:id/status",
+        "body": {
+          "status": {"type": "string", "values": ["pending", "completed", "failed", "cancelled"], "required": true},
+          "notes": {"type": "string", "required": false}
+        }
+      }
+    },
+    "bookings": {
+      "list": {
+        "method": "GET",
+        "path": "/api/admin/bookings",
+        "queryParams": {
+          "page": {"type": "number", "default": 1},
+          "limit": {"type": "number", "default": 20},
+          "status": {"type": "string", "values": ["pending", "confirmed", "cancelled", "completed"]},
+          "search": {"type": "string", "description": "Search by title, description, company, submitter, location"},
+          "fromDate": {"type": "string", "format": "ISO date"},
+          "toDate": {"type": "string", "format": "ISO date"},
+          "userId": {"type": "string"}
+        }
+      },
+      "getById": {
+        "method": "GET",
+        "path": "/api/admin/bookings/:id"
+      },
+      "updateStatus": {
+        "method": "PUT",
+        "path": "/api/admin/bookings/:id/status",
+        "body": {
+          "status": {"type": "string", "values": ["pending", "confirmed", "cancelled", "completed"], "required": true},
+          "notes": {"type": "string", "required": false}
+        }
+      },
+      "delete": {
+        "method": "DELETE",
+        "path": "/api/admin/bookings/:id"
+      },
+      "bulkDelete": {
+        "method": "POST",
+        "path": "/api/admin/bookings/bulk-delete",
+        "body": {
+          "ids": {"type": "array of strings", "required": true}
+        }
+      }
+    },
+    "media": {
+      "list": {
+        "method": "GET",
+        "path": "/api/admin/media",
+        "queryParams": {
+          "page": {"type": "number", "default": 1},
+          "limit": {"type": "number", "default": 20},
+          "category": {"type": "string"},
+          "isPublic": {"type": "boolean"},
+          "search": {"type": "string", "description": "Search by filename, alt, caption, tags"},
+          "userId": {"type": "string"}
+        }
+      },
+      "getById": {
+        "method": "GET",
+        "path": "/api/admin/media/:id"
+      },
+      "update": {
+        "method": "PUT",
+        "path": "/api/admin/media/:id",
+        "body": {
+          "alt": {"type": "string", "required": false},
+          "caption": {"type": "string", "required": false},
+          "category": {"type": "string", "required": false},
+          "isPublic": {"type": "boolean", "required": false},
+          "tags": {"type": "string", "required": false}
+        }
+      },
+      "delete": {
+        "method": "DELETE",
+        "path": "/api/admin/media/:id"
+      },
+      "bulkDelete": {
+        "method": "POST",
+        "path": "/api/admin/media/bulk-delete",
+        "body": {
+          "ids": {"type": "array of strings", "required": true}
+        }
+      }
+    },
+    "notifications": {
+      "list": {
+        "method": "GET",
+        "path": "/api/admin/notifications",
+        "queryParams": {
+          "page": {"type": "number", "default": 1},
+          "limit": {"type": "number", "default": 20},
+          "type": {"type": "string", "values": ["info", "success", "warning", "error", "welcome"]},
+          "read": {"type": "boolean"},
+          "userId": {"type": "string"}
+        }
+      },
+      "create": {
+        "method": "POST",
+        "path": "/api/admin/notifications",
+        "body": {
+          "userId": {"type": "string", "required": true},
+          "title": {"type": "string", "required": true},
+          "message": {"type": "string", "required": true},
+          "type": {"type": "string", "required": false},
+          "actionUrl": {"type": "string", "required": false},
+          "actionLabel": {"type": "string", "required": false}
+        }
+      },
+      "delete": {
+        "method": "DELETE",
+        "path": "/api/admin/notifications/:id"
+      },
+      "bulkDelete": {
+        "method": "POST",
+        "path": "/api/admin/notifications/bulk-delete",
+        "body": {
+          "ids": {"type": "array of strings", "required": true}
+        }
+      }
+    },
+    "templates": {
+      "list": {
+        "method": "GET",
+        "path": "/api/admin/templates",
+        "queryParams": {
+          "isActive": {"type": "boolean"}
+        }
+      },
+      "getById": {
+        "method": "GET",
+        "path": "/api/admin/templates/:id"
+      },
+      "create": {
+        "method": "POST",
+        "path": "/api/admin/templates",
+        "body": {
+          "name": {"type": "string", "required": true},
+          "description": {"type": "string", "required": false},
+          "pdfUrl": {"type": "string", "required": true},
+          "isActive": {"type": "boolean", "required": false},
+          "sortOrder": {"type": "number", "required": false}
+        }
+      },
+      "update": {
+        "method": "PUT",
+        "path": "/api/admin/templates/:id",
+        "body": {
+          "name": {"type": "string", "required": false},
+          "description": {"type": "string", "required": false},
+          "pdfUrl": {"type": "string", "required": false},
+          "isActive": {"type": "boolean", "required": false},
+          "sortOrder": {"type": "number", "required": false}
+        },
+        "note": "Cannot delete template if it's in use by any website"
+      },
+      "delete": {
+        "method": "DELETE",
+        "path": "/api/admin/templates/:id",
+        "note": "Cannot delete template if it's in use by any website"
+      }
+    },
+    "sessions": {
+      "list": {
+        "method": "GET",
+        "path": "/api/admin/sessions",
+        "queryParams": {
+          "page": {"type": "number", "default": 1},
+          "limit": {"type": "number", "default": 50},
+          "isActive": {"type": "boolean"},
+          "userId": {"type": "string"}
+        }
+      },
+      "delete": {
+        "method": "DELETE",
+        "path": "/api/admin/sessions/:id"
+      },
+      "revokeUserSessions": {
+        "method": "POST",
+        "path": "/api/admin/sessions/user/:userId/revoke"
+      }
+    },
+    "tenants": {
+      "list": {
+        "method": "GET",
+        "path": "/api/admin/tenants"
+      },
+      "getById": {
+        "method": "GET",
+        "path": "/api/admin/tenants/:id"
+      }
+    },
+    "stats": {
+      "get": {
+        "method": "GET",
+        "path": "/api/admin/stats",
+        "queryParams": {
+          "fromDate": {"type": "string", "format": "ISO date"},
+          "toDate": {"type": "string", "format": "ISO date"}
+        },
+        "response": {
+          "overview": {
+            "users": {"total": "number", "active": "number", "admins": "number"},
+            "applications": {"total": "number", "pending": "number", "completed": "number"},
+            "websites": {"total": "number", "pending": "number", "published": "number"},
+            "billing": {
+              "total": "number",
+              "active": "number",
+              "revenue": {"total": "number", "initial": "number", "recurring": "number"}
+            }
+          },
+          "recentActivity": {
+            "users": "array",
+            "applications": "array"
+          }
+        }
+      }
+    },
+    "activity": {
+      "list": {
+        "method": "GET",
+        "path": "/api/admin/activity",
+        "queryParams": {
+          "page": {"type": "number", "default": 1},
+          "limit": {"type": "number", "default": 50},
+          "userId": {"type": "string"}
+        }
+      },
+      "getUserActivity": {
+        "method": "GET",
+        "path": "/api/admin/activity/user/:userId",
+        "response": {
+          "sessions": "array",
+          "bookings": "array",
+          "media": "array",
+          "notifications": "array"
+        }
+      }
+    },
+    "reports": {
+      "users": {
+        "method": "GET",
+        "path": "/api/admin/reports/users",
+        "queryParams": {
+          "fromDate": {"type": "string", "format": "ISO date"},
+          "toDate": {"type": "string", "format": "ISO date"}
+        },
+        "response": "Array of all users with profile, billing, website, and counts"
+      },
+      "revenue": {
+        "method": "GET",
+        "path": "/api/admin/reports/revenue",
+        "queryParams": {
+          "fromDate": {"type": "string", "format": "ISO date"},
+          "toDate": {"type": "string", "format": "ISO date"}
+        },
+        "response": {
+          "billings": "array",
+          "summary": {
+            "totalInitial": "number",
+            "totalRecurring": "number",
+            "totalSetup": "number",
+            "customDesignFees": "number",
+            "total": "number"
+          }
+        }
+      }
+    }
+  },
+  "health": {
+    "check": {
+      "method": "GET",
+      "path": "/api/health",
+      "authRequired": false,
+      "description": "Health check endpoint for monitoring and load balancers",
+      "response": {
+        "status": "ok|degraded",
+        "timestamp": "ISO date string",
+        "uptime": "number (seconds)",
+        "environment": "development|production|staging",
+        "checks": {
+          "database": "healthy|unhealthy|unknown"
+        },
+        "error": "string (only present if status is degraded)"
+      },
+      "examples": {
+        "healthy": {
+          "status": "ok",
+          "timestamp": "2024-01-01T00:00:00.000Z",
+          "uptime": 3600,
+          "environment": "production",
+          "checks": {
+            "database": "healthy"
+          }
+        },
+        "degraded": {
+          "status": "degraded",
+          "timestamp": "2024-01-01T00:00:00.000Z",
+          "uptime": 3600,
+          "environment": "production",
+          "checks": {
+            "database": "unhealthy"
+          },
+          "error": "Database connection failed"
+        }
+      }
+    }
+  },
+  "errorCodes": {
+    "200": "Success",
+    "400": "Bad Request",
+    "401": "Unauthorized (invalid/missing token)",
+    "403": "Forbidden (not admin)",
+    "404": "Not Found",
+    "500": "Internal Server Error"
+  },
+  "errorResponse": {
+    "statusCode": 403,
+    "message": "Admin access required",
+    "error": "Forbidden"
+  },
+  "cors": {
+    "note": "Add admin panel domain to CORS_ORIGINS environment variable",
+    "example": "CORS_ORIGINS=https://admin.yourdomain.com,https://your-admin-panel.com"
+  },
+  "summary": {
+    "totalEndpoints": 48,
+    "categories": [
+      {"name": "Users Management", "count": 6},
+      {"name": "Website Requests", "count": 3},
+      {"name": "Billing", "count": 3},
+      {"name": "Applications", "count": 3},
+      {"name": "Bookings", "count": 5},
+      {"name": "Media/Gallery", "count": 5},
+      {"name": "Notifications", "count": 4},
+      {"name": "Templates", "count": 5},
+      {"name": "Sessions", "count": 3},
+      {"name": "Tenants", "count": 2},
+      {"name": "Statistics", "count": 1},
+      {"name": "Activity", "count": 2},
+      {"name": "Reports", "count": 2},
+      {"name": "Health", "count": 1}
+    ]
+  }
+}
+
